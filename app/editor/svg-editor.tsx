@@ -152,12 +152,13 @@ export function SvgEditor() {
   }
 
   return (
-    <div className="p-4 space-y-2">
-      <div className="flex flex-wrap items-center space-x-2">
-        <label className="flex items-center space-x-1">
+    <div className="max-w-4xl mx-auto p-4 space-y-4">
+      <h1 className="text-2xl font-semibold">SVG Editor</h1>
+      <div className="flex flex-wrap items-center gap-3 bg-gray-100 p-3 rounded-md shadow">
+        <label className="flex items-center gap-1 text-sm">
           <span>Shape:</span>
           <select
-            className="border rounded px-1 py-0.5"
+            className="border rounded px-2 py-1"
             value={shapeType}
             onChange={(e) => setShapeType(e.target.value as "rect" | "circle")}
           >
@@ -165,7 +166,7 @@ export function SvgEditor() {
             <option value="circle">Circle</option>
           </select>
         </label>
-        <label className="flex items-center space-x-1">
+        <label className="flex items-center gap-1 text-sm">
           <span>Color:</span>
           <input
             type="color"
@@ -174,34 +175,50 @@ export function SvgEditor() {
           />
         </label>
         <button
-          className="border px-2 py-1 rounded"
+          className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
           onClick={undo}
           disabled={history.length === 0}
         >
           Undo
         </button>
         <button
-          className="border px-2 py-1 rounded"
+          className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
           onClick={redo}
           disabled={future.length === 0}
         >
           Redo
         </button>
-        <button className="border px-2 py-1 rounded" onClick={clear}>
+        <button
+          className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+          onClick={clear}
+        >
           Clear
         </button>
-        <button className="border px-2 py-1 rounded" onClick={download}>
+        <button
+          className="px-3 py-1 rounded bg-green-500 text-white hover:bg-green-600"
+          onClick={download}
+        >
           Download
         </button>
       </div>
       <p className="text-sm text-gray-600">Drag on the canvas to draw.</p>
       <svg
         ref={svgRef}
-        className="border w-full h-[500px] bg-white"
+        className="border w-full h-[500px] bg-white rounded shadow-inner"
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
       >
+        <defs>
+          <pattern id="small-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" strokeWidth="0.5" />
+          </pattern>
+          <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+            <rect width="100" height="100" fill="url(#small-grid)" />
+            <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#d1d5db" strokeWidth="1" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
         {shapes.map((shape) => (
           shape.type === "rect" ? (
             <rect
