@@ -152,59 +152,10 @@ export function SvgEditor() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-4">
-      <h1 className="text-2xl font-semibold">SVG Editor</h1>
-      <div className="flex flex-wrap items-center gap-3 bg-gray-100 p-3 rounded-md shadow">
-        <label className="flex items-center gap-1 text-sm">
-          <span>Shape:</span>
-          <select
-            className="border rounded px-2 py-1"
-            value={shapeType}
-            onChange={(e) => setShapeType(e.target.value as "rect" | "circle")}
-          >
-            <option value="rect">Rectangle</option>
-            <option value="circle">Circle</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-1 text-sm">
-          <span>Color:</span>
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-          />
-        </label>
-        <button
-          className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
-          onClick={undo}
-          disabled={history.length === 0}
-        >
-          Undo
-        </button>
-        <button
-          className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
-          onClick={redo}
-          disabled={future.length === 0}
-        >
-          Redo
-        </button>
-        <button
-          className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
-          onClick={clear}
-        >
-          Clear
-        </button>
-        <button
-          className="px-3 py-1 rounded bg-green-500 text-white hover:bg-green-600"
-          onClick={download}
-        >
-          Download
-        </button>
-      </div>
-      <p className="text-sm text-gray-600">Drag on the canvas to draw.</p>
+    <div className="relative w-screen h-screen">
       <svg
         ref={svgRef}
-        className="border w-full h-[500px] bg-white rounded shadow-inner"
+        className="w-full h-full bg-white"
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
@@ -242,6 +193,57 @@ export function SvgEditor() {
           )
         ))}
       </svg>
+
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 p-4 bg-white/90 rounded shadow">
+        <h1 className="text-lg font-semibold">SVG Editor</h1>
+        <label className="flex flex-col text-sm gap-1">
+          <span>Shape</span>
+          <select
+            className="border rounded px-2 py-1"
+            value={shapeType}
+            onChange={(e) => setShapeType(e.target.value as "rect" | "circle")}
+          >
+            <option value="rect">Rectangle</option>
+            <option value="circle">Circle</option>
+          </select>
+        </label>
+        <label className="flex flex-col text-sm gap-1">
+          <span>Color</span>
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="h-8 w-full p-0 border rounded"
+          />
+        </label>
+        <button
+          className="w-full px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+          onClick={undo}
+          disabled={history.length === 0}
+        >
+          Undo
+        </button>
+        <button
+          className="w-full px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+          onClick={redo}
+          disabled={future.length === 0}
+        >
+          Redo
+        </button>
+        <button
+          className="w-full px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+          onClick={clear}
+        >
+          Clear
+        </button>
+        <button
+          className="w-full px-3 py-1 rounded bg-green-500 text-white hover:bg-green-600"
+          onClick={download}
+        >
+          Download
+        </button>
+        <p className="text-xs text-gray-500 pt-2">Drag on the canvas to draw.</p>
+      </div>
     </div>
   );
 }
