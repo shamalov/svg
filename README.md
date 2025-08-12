@@ -1,10 +1,13 @@
 # SVG Editor on Cloudflare Workers
 
-This repository hosts a simple SVG editor built with React Router and Cloudflare Workers. Drag on the canvas to draw rectangles, clear your work, or download the resulting SVG.
+This repository hosts a simple SVG editor built with React Router and Cloudflare Workers. Use the built‑in tools to draw basic shapes, undo mistakes, change colors, and download the resulting SVG.
 
 ## Features
 
-- Draw rectangles by dragging on the canvas
+- Draw rectangles or circles by dragging on the canvas
+- Choose fill color with a color picker
+- Undo and redo individual drawing steps
+- Clear the entire canvas
 - Download the drawing as an SVG file
 - Built with React Router, Vite and TailwindCSS
 - Ready to deploy on Cloudflare Workers
