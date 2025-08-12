@@ -155,7 +155,7 @@ export function SvgEditor() {
     <div className="fixed inset-0">
       <svg
         ref={svgRef}
-        className="block w-full h-full bg-white"
+        className="block w-full h-full bg-white dark:bg-gray-900"
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
@@ -194,12 +194,12 @@ export function SvgEditor() {
         ))}
       </svg>
 
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 p-4 bg-white/90 rounded shadow">
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 p-4 bg-white/90 dark:bg-gray-800/90 rounded shadow text-gray-800 dark:text-gray-100">
         <h1 className="text-lg font-semibold">SVG Editor</h1>
         <label className="flex flex-col text-sm gap-1">
           <span>Shape</span>
           <select
-            className="border rounded px-2 py-1"
+            className="border rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600"
             value={shapeType}
             onChange={(e) => setShapeType(e.target.value as "rect" | "circle")}
           >
@@ -213,36 +213,36 @@ export function SvgEditor() {
             type="color"
             value={color}
             onChange={(e) => setColor(e.target.value)}
-            className="h-8 w-full p-0 border rounded"
+            className="h-8 w-full p-0 border rounded bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
           />
         </label>
         <button
-          className="w-full px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+          className="w-full px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700"
           onClick={undo}
           disabled={history.length === 0}
         >
           Undo
         </button>
         <button
-          className="w-full px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+          className="w-full px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700"
           onClick={redo}
           disabled={future.length === 0}
         >
           Redo
         </button>
         <button
-          className="w-full px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+          className="w-full px-3 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
           onClick={clear}
         >
           Clear
         </button>
         <button
-          className="w-full px-3 py-1 rounded bg-green-500 text-white hover:bg-green-600"
+          className="w-full px-3 py-1 rounded bg-green-500 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
           onClick={download}
         >
           Download
         </button>
-        <p className="text-xs text-gray-500 pt-2">Drag on the canvas to draw.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 pt-2">Drag on the canvas to draw.</p>
       </div>
     </div>
   );
