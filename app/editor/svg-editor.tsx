@@ -152,10 +152,10 @@ export function SvgEditor() {
   }
 
   return (
-    <div className="relative w-screen h-screen">
+    <div className="fixed inset-0">
       <svg
         ref={svgRef}
-        className="w-full h-full bg-white"
+        className="block w-full h-full bg-white"
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
