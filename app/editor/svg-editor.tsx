@@ -33,6 +33,7 @@ export function SvgEditor() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [elementCode, setElementCode] = useState("");
   const svgRef = useRef<SVGSVGElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const idRef = useRef(0);
 
   function hexToRgba(hex: string, alpha: number) {
@@ -74,6 +75,54 @@ export function SvgEditor() {
     return `<svg xmlns="http://www.w3.org/2000/svg">\n  ${elements}\n</svg>`;
   }
 
+  function handleFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(text, "image/svg+xml");
+      const loaded: Shape[] = [];
+      let id = idRef.current;
+      doc.querySelectorAll("rect").forEach((el) => {
+        loaded.push({
+          id: id++,
+          type: "rect",
+          x: parseFloat(el.getAttribute("x") || "0"),
+          y: parseFloat(el.getAttribute("y") || "0"),
+          width: parseFloat(el.getAttribute("width") || "0"),
+          height: parseFloat(el.getAttribute("height") || "0"),
+          fill: el.getAttribute("fill") || "transparent",
+          stroke: el.getAttribute("stroke") || "black",
+        });
+      });
+      doc.querySelectorAll("circle").forEach((el) => {
+        loaded.push({
+          id: id++,
+          type: "circle",
+          cx: parseFloat(el.getAttribute("cx") || "0"),
+          cy: parseFloat(el.getAttribute("cy") || "0"),
+          r: parseFloat(el.getAttribute("r") || "0"),
+          fill: el.getAttribute("fill") || "transparent",
+          stroke: el.getAttribute("stroke") || "black",
+        });
+      });
+      idRef.current = id;
+      setShapes(loaded);
+    };
+    reader.readAsText(file);
+  }
+
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === "image/svg+xml") {
+      handleFile(file);
+    }
+  }
+
+  function onDragOver(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+  }
 
   function onMouseDown(e: React.MouseEvent<SVGSVGElement>) {
     const { x, y } = getRelativePoint(e);
@@ -173,57 +222,12 @@ export function SvgEditor() {
   }
 
   return (
-    <div className="fixed inset-0">
-      <svg
-        ref={svgRef}
-        className="block w-full h-full bg-white dark:bg-gray-900"
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-      >
-        <defs>
-          <pattern id="small-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" strokeWidth="0.5" />
-          </pattern>
-          <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
-            <rect width="100" height="100" fill="url(#small-grid)" />
-            <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#d1d5db" strokeWidth="1" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid)" />
-        {shapes.map((shape) => (
-          shape.type === "rect" ? (
-            <rect
-              key={shape.id}
-              x={Math.min(shape.x, shape.x + shape.width)}
-              y={Math.min(shape.y, shape.y + shape.height)}
-              width={Math.abs(shape.width)}
-              height={Math.abs(shape.height)}
-              fill={shape.fill}
-              stroke={shape.stroke}
-              onClick={() => {
-                setSelectedId(shape.id);
-                setElementCode(generateSvg([shape]).split("\n")[1].trim());
-              }}
-            />
-          ) : (
-            <circle
-              key={shape.id}
-              cx={shape.cx}
-              cy={shape.cy}
-              r={Math.abs(shape.r)}
-              fill={shape.fill}
-              stroke={shape.stroke}
-              onClick={() => {
-                setSelectedId(shape.id);
-                setElementCode(generateSvg([shape]).split("\n")[1].trim());
-              }}
-            />
-          )
-        ))}
-      </svg>
-
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 p-4 bg-white/90 dark:bg-gray-800/90 rounded shadow text-gray-800 dark:text-gray-100">
+    <div
+      className="fixed inset-0 flex"
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
+      <div className="w-64 p-4 bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-gray-100 flex flex-col gap-2 z-10">
         <h1 className="text-lg font-semibold">SVG Editor</h1>
         <label className="flex flex-col text-sm gap-1">
           <span>Shape</span>
@@ -274,55 +278,131 @@ export function SvgEditor() {
         <p className="text-xs text-gray-500 dark:text-gray-400 pt-2">Drag on the canvas to draw.</p>
       </div>
 
-      {selectedId !== null && (
-        <div className="absolute top-4 right-4 z-10 p-4 bg-white/90 dark:bg-gray-800/90 rounded shadow flex flex-col gap-2 text-gray-800 dark:text-gray-100">
-          <textarea
-            className="w-64 h-32 font-mono text-sm p-2 border rounded bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-            value={elementCode}
-            onChange={(e) => {
-              const code = `<svg xmlns=\"http://www.w3.org/2000/svg\">${e.target.value}</svg>`;
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(code, "image/svg+xml");
-              const el = doc.firstElementChild?.firstElementChild as SVGElement | null;
-              if (!el) return;
-              setElementCode(e.target.value);
-              setShapes((prev) =>
-                prev.map((s) => {
-                  if (s.id !== selectedId) return s;
-                  if (el.tagName === "rect") {
-                    return {
-                      id: s.id,
-                      type: "rect",
-                      x: parseFloat(el.getAttribute("x") || "0"),
-                      y: parseFloat(el.getAttribute("y") || "0"),
-                      width: parseFloat(el.getAttribute("width") || "0"),
-                      height: parseFloat(el.getAttribute("height") || "0"),
-                      fill: el.getAttribute("fill") || "transparent",
-                      stroke: el.getAttribute("stroke") || "black",
-                    };
-                  } else {
-                    return {
-                      id: s.id,
-                      type: "circle",
-                      cx: parseFloat(el.getAttribute("cx") || "0"),
-                      cy: parseFloat(el.getAttribute("cy") || "0"),
-                      r: parseFloat(el.getAttribute("r") || "0"),
-                      fill: el.getAttribute("fill") || "transparent",
-                      stroke: el.getAttribute("stroke") || "black",
-                    };
-                  }
-                })
-              );
-            }}
-          />
-          <button
-            className="px-2 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
-            onClick={() => setSelectedId(null)}
-          >
-            Close
-          </button>
-        </div>
-      )}
+      <div className="flex-1 relative">
+        <svg
+          ref={svgRef}
+          className="block w-full h-full bg-white dark:bg-gray-900"
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+        >
+          <defs>
+            <pattern id="small-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" strokeWidth="0.5" />
+            </pattern>
+            <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+              <rect width="100" height="100" fill="url(#small-grid)" />
+              <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#d1d5db" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+          {shapes.map((shape) => (
+            shape.type === "rect" ? (
+              <rect
+                key={shape.id}
+                x={Math.min(shape.x, shape.x + shape.width)}
+                y={Math.min(shape.y, shape.y + shape.height)}
+                width={Math.abs(shape.width)}
+                height={Math.abs(shape.height)}
+                fill={shape.fill}
+                stroke={shape.stroke}
+                onClick={() => {
+                  setSelectedId(shape.id);
+                  setElementCode(generateSvg([shape]).split("\n")[1].trim());
+                }}
+              />
+            ) : (
+              <circle
+                key={shape.id}
+                cx={shape.cx}
+                cy={shape.cy}
+                r={Math.abs(shape.r)}
+                fill={shape.fill}
+                stroke={shape.stroke}
+                onClick={() => {
+                  setSelectedId(shape.id);
+                  setElementCode(generateSvg([shape]).split("\n")[1].trim());
+                }}
+              />
+            )
+          ))}
+        </svg>
+
+        {shapes.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-500 dark:text-gray-400 pointer-events-none">
+            <div className="text-center">
+              <p className="mb-2">Drag & drop an SVG file here or</p>
+              <button
+                className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 pointer-events-auto"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Upload
+              </button>
+            </div>
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/svg+xml"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+          }}
+        />
+
+        {selectedId !== null && (
+          <div className="absolute top-4 right-4 z-10 p-4 bg-white/90 dark:bg-gray-800/90 rounded shadow flex flex-col gap-2 text-gray-800 dark:text-gray-100">
+            <textarea
+              className="w-64 h-32 font-mono text-sm p-2 border rounded bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+              value={elementCode}
+              onChange={(e) => {
+                const code = `<svg xmlns=\"http://www.w3.org/2000/svg\">${e.target.value}</svg>`;
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(code, "image/svg+xml");
+                const el = doc.firstElementChild?.firstElementChild as SVGElement | null;
+                if (!el) return;
+                setElementCode(e.target.value);
+                setShapes((prev) =>
+                  prev.map((s) => {
+                    if (s.id !== selectedId) return s;
+                    if (el.tagName === "rect") {
+                      return {
+                        id: s.id,
+                        type: "rect",
+                        x: parseFloat(el.getAttribute("x") || "0"),
+                        y: parseFloat(el.getAttribute("y") || "0"),
+                        width: parseFloat(el.getAttribute("width") || "0"),
+                        height: parseFloat(el.getAttribute("height") || "0"),
+                        fill: el.getAttribute("fill") || "transparent",
+                        stroke: el.getAttribute("stroke") || "black",
+                      };
+                    } else {
+                      return {
+                        id: s.id,
+                        type: "circle",
+                        cx: parseFloat(el.getAttribute("cx") || "0"),
+                        cy: parseFloat(el.getAttribute("cy") || "0"),
+                        r: parseFloat(el.getAttribute("r") || "0"),
+                        fill: el.getAttribute("fill") || "transparent",
+                        stroke: el.getAttribute("stroke") || "black",
+                      };
+                    }
+                  })
+                );
+              }}
+            />
+            <button
+              className="px-2 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
+              onClick={() => setSelectedId(null)}
+            >
+              Close
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
