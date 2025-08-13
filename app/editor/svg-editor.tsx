@@ -223,10 +223,10 @@ export function SvgEditor() {
   }
 
   function getRelativePoint(e: React.MouseEvent<SVGElement>) {
-    const rect = svgRef.current!.getBoundingClientRect();
+    const rect = svgRef.current?.getBoundingClientRect();
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: rect ? e.clientX - rect.left : 0,
+      y: rect ? e.clientY - rect.top : 0,
     };
   }
 
@@ -423,10 +423,10 @@ export function SvgEditor() {
   }
 
   function onMouseMove(e: React.MouseEvent<SVGSVGElement>) {
-    if (draggingPoint) {
+    if (draggingPoint && dragOffset.current) {
       const { x, y } = getRelativePoint(e);
-      const nx = x - dragOffset.current!.x;
-      const ny = y - dragOffset.current!.y;
+      const nx = x - dragOffset.current.x;
+      const ny = y - dragOffset.current.y;
       setShapes((prev) =>
         prev.map((s) => {
           if (s.id !== selectedId || s.type !== "path") return s;
@@ -440,12 +440,12 @@ export function SvgEditor() {
       setSelectedPoint(updated);
       return;
     }
-    if (draggingId !== null) {
+    if (draggingId !== null && dragOffset.current) {
       const { x, y } = getRelativePoint(e);
+      const offset = dragOffset.current;
       setShapes((prev) =>
         prev.map((s) => {
           if (s.id !== draggingId) return s;
-          const offset = dragOffset.current!;
           if (s.type === "rect") {
             return { ...s, x: x - offset.x, y: y - offset.y };
           } else {
