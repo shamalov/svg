@@ -210,9 +210,10 @@ export function SvgEditor() {
   const [selectedPoint, setSelectedPoint] = useState<PathPoint | null>(null);
   const [draggingPoint, setDraggingPoint] = useState<PathPoint | null>(null);
   const [pointMenu, setPointMenu] = useState<{ x: number; y: number } | null>(null);
+  const DEFAULT_VIEWBOX: [number, number, number, number] = [-5000, -5000, 10000, 10000];
   const [svgViewBox, setSvgViewBox] = useState<
-    [number, number, number, number] | null
-  >(null);
+    [number, number, number, number]
+  >(DEFAULT_VIEWBOX);
   const dragOffset = useRef<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -348,16 +349,14 @@ export function SvgEditor() {
       });
       idRef.current = id;
       const svgElement = doc.querySelector("svg");
-      const target = svgRef.current;
-      if (svgElement && target) {
+      if (svgElement) {
         const viewBoxAttr = svgElement.getAttribute("viewBox");
         if (viewBoxAttr) {
-          target.setAttribute("viewBox", viewBoxAttr);
           const parts = viewBoxAttr.split(/[\s,]+/).map(Number);
           if (parts.length === 4 && parts.every((n) => !isNaN(n))) {
             setSvgViewBox(parts as [number, number, number, number]);
           } else {
-            setSvgViewBox(null);
+            setSvgViewBox(DEFAULT_VIEWBOX);
           }
         } else {
           const widthAttr = svgElement.getAttribute("width");
@@ -366,14 +365,14 @@ export function SvgEditor() {
             const w = parseFloat(widthAttr);
             const h = parseFloat(heightAttr);
             if (!isNaN(w) && !isNaN(h)) {
-              target.setAttribute("viewBox", `0 0 ${w} ${h}`);
               setSvgViewBox([0, 0, w, h]);
+            } else {
+              setSvgViewBox(DEFAULT_VIEWBOX);
             }
           } else {
-            setSvgViewBox(null);
+            setSvgViewBox(DEFAULT_VIEWBOX);
           }
         }
-        target.setAttribute("preserveAspectRatio", "xMidYMid meet");
       }
       setShapes(loaded);
     };
@@ -617,7 +616,7 @@ export function SvgEditor() {
       svg.removeAttribute("viewBox");
       svg.removeAttribute("preserveAspectRatio");
     }
-    setSvgViewBox(null);
+    setSvgViewBox(DEFAULT_VIEWBOX);
   }
 
   function undo() {
@@ -743,6 +742,8 @@ export function SvgEditor() {
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
             onMouseUp={onMouseUp}
+            viewBox={svgViewBox.join(" ")}
+            preserveAspectRatio="xMidYMid meet"
           >
             <defs>
               <pattern id="small-grid" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -754,10 +755,10 @@ export function SvgEditor() {
               </pattern>
             </defs>
             <rect
-              x={svgViewBox ? svgViewBox[0] : 0}
-              y={svgViewBox ? svgViewBox[1] : 0}
-              width={svgViewBox ? svgViewBox[2] : "100%"}
-              height={svgViewBox ? svgViewBox[3] : "100%"}
+              x={svgViewBox[0]}
+              y={svgViewBox[1]}
+              width={svgViewBox[2]}
+              height={svgViewBox[3]}
               fill="url(#grid)"
             />
             {shapes.map((shape) => (
