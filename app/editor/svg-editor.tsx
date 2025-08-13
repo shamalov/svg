@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type RectShape = {
   id: number;
@@ -21,7 +21,167 @@ type CircleShape = {
   stroke: string;
 };
 
-type Shape = RectShape | CircleShape;
+type PathCommand = {
+  code: string;
+  values: number[];
+};
+
+type PathShape = {
+  id: number;
+  type: "path";
+  commands: PathCommand[];
+  d: string;
+  fill: string;
+  stroke: string;
+};
+type Shape = RectShape | CircleShape | PathShape;
+
+function parsePath(d: string): PathCommand[] {
+  const commands: PathCommand[] = [];
+  const regex = /([a-zA-Z])([^a-zA-Z]*)/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(d)) !== null) {
+    const code = match[1];
+    const values = match[2]
+      .trim()
+      .split(/[\s,]+/)
+      .filter(Boolean)
+      .map(Number);
+    commands.push({ code, values });
+  }
+  return commands;
+}
+
+function commandsToString(commands: PathCommand[]): string {
+  return commands.map((c) => `${c.code}${c.values.join(" ")}`).join(" ");
+}
+
+type PathPoint = {
+  x: number;
+  y: number;
+  cmdIndex: number;
+  valueIndex: number;
+};
+
+function getPathPoints(commands: PathCommand[]): PathPoint[] {
+  const points: PathPoint[] = [];
+  let cx = 0;
+  let cy = 0;
+  commands.forEach((cmd, ci) => {
+    const code = cmd.code;
+    const upper = code.toUpperCase();
+    const isRel = code !== upper;
+    const vals = cmd.values;
+    switch (upper) {
+      case "M":
+      case "L":
+      case "T":
+        for (let i = 0; i < vals.length; i += 2) {
+          let x = vals[i];
+          let y = vals[i + 1];
+          if (isRel) {
+            x += cx;
+            y += cy;
+          }
+          cx = x;
+          cy = y;
+          points.push({ x, y, cmdIndex: ci, valueIndex: i });
+        }
+        break;
+      case "H":
+        for (let i = 0; i < vals.length; i++) {
+          let x = vals[i];
+          if (isRel) x += cx;
+          cx = x;
+          points.push({ x, y: cy, cmdIndex: ci, valueIndex: i });
+        }
+        break;
+      case "V":
+        for (let i = 0; i < vals.length; i++) {
+          let y = vals[i];
+          if (isRel) y += cy;
+          cy = y;
+          points.push({ x: cx, y, cmdIndex: ci, valueIndex: i });
+        }
+        break;
+      case "C":
+      case "S":
+      case "Q":
+        for (let i = 0; i < vals.length; i += 2) {
+          let x = vals[i];
+          let y = vals[i + 1];
+          if (isRel) {
+            x += cx;
+            y += cy;
+          }
+          if (i >= vals.length - 2) {
+            cx = x;
+            cy = y;
+          }
+          points.push({ x, y, cmdIndex: ci, valueIndex: i });
+        }
+        break;
+      case "A":
+        for (let i = 0; i < vals.length; i += 7) {
+          let x = vals[i + 5];
+          let y = vals[i + 6];
+          if (isRel) {
+            x += cx;
+            y += cy;
+          }
+          cx = x;
+          cy = y;
+          points.push({ x, y, cmdIndex: ci, valueIndex: i + 5 });
+        }
+        break;
+      case "Z":
+        break;
+    }
+  });
+  return points;
+}
+
+function movePathPoint(
+  commands: PathCommand[],
+  point: PathPoint,
+  nx: number,
+  ny: number
+) {
+  const cmd = commands[point.cmdIndex];
+  const upper = cmd.code.toUpperCase();
+  const isRel = cmd.code !== upper;
+  if (isRel) {
+    // convert to absolute for easier handling
+    cmd.code = upper;
+  }
+  const vals = cmd.values;
+  switch (upper) {
+    case "M":
+    case "L":
+    case "T":
+      vals[point.valueIndex] = nx;
+      vals[point.valueIndex + 1] = ny;
+      break;
+    case "H":
+      vals[point.valueIndex] = nx;
+      break;
+    case "V":
+      vals[point.valueIndex] = ny;
+      break;
+    case "C":
+    case "S":
+    case "Q":
+      vals[point.valueIndex] = nx;
+      vals[point.valueIndex + 1] = ny;
+      break;
+    case "A":
+      // only move end point
+      const idx = point.valueIndex;
+      vals[idx] = nx;
+      vals[idx + 1] = ny;
+      break;
+  }
+}
 
 export function SvgEditor() {
   const [shapes, setShapes] = useState<Shape[]>([]);
@@ -32,14 +192,34 @@ export function SvgEditor() {
   const [future, setFuture] = useState<Shape[][]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [selectedPoint, setSelectedPoint] = useState<PathPoint | null>(null);
+  const [draggingPoint, setDraggingPoint] = useState<PathPoint | null>(null);
+  const [pointMenu, setPointMenu] = useState<{ x: number; y: number } | null>(null);
   const dragOffset = useRef<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const idRef = useRef(0);
   const selectedShape = shapes.find((s) => s.id === selectedId);
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key.toLowerCase() === "e" && selectedPoint) {
+        setPointMenu({ x: selectedPoint.x, y: selectedPoint.y });
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedPoint]);
+
   function snapshot(list: Shape[]) {
-    return list.map((s) => ({ ...s }));
+    return list.map((s) =>
+      s.type === "path"
+        ? {
+            ...s,
+            commands: s.commands.map((c) => ({ code: c.code, values: [...c.values] })),
+          }
+        : { ...s }
+    );
   }
 
   function getRelativePoint(e: React.MouseEvent<SVGElement>) {
@@ -81,6 +261,17 @@ export function SvgEditor() {
           stroke: el.getAttribute("stroke") || "black",
         });
       });
+      doc.querySelectorAll("path").forEach((el) => {
+        const d = el.getAttribute("d") || "";
+        loaded.push({
+          id: id++,
+          type: "path",
+          d,
+          commands: parsePath(d),
+          fill: el.getAttribute("fill") || "transparent",
+          stroke: el.getAttribute("stroke") || "black",
+        });
+      });
       idRef.current = id;
       setShapes(loaded);
     };
@@ -101,6 +292,7 @@ export function SvgEditor() {
 
   function onMouseDown(e: React.MouseEvent<SVGSVGElement>) {
     const { x, y } = getRelativePoint(e);
+    setPointMenu(null);
     setHistory((prev) => [...prev, snapshot(shapes)]);
     setFuture([]);
     let newShape: Shape;
@@ -133,18 +325,121 @@ export function SvgEditor() {
   function onShapeMouseDown(e: React.MouseEvent<SVGElement>, shape: Shape) {
     e.stopPropagation();
     const { x, y } = getRelativePoint(e);
+     setPointMenu(null);
     setSelectedId(shape.id);
     setHistory((prev) => [...prev, snapshot(shapes)]);
     setFuture([]);
     if (shape.type === "rect") {
       dragOffset.current = { x: x - shape.x, y: y - shape.y };
-    } else {
+      setDraggingId(shape.id);
+    } else if (shape.type === "circle") {
       dragOffset.current = { x: x - shape.cx, y: y - shape.cy };
+      setDraggingId(shape.id);
+    } else {
+      setDraggingId(null);
     }
-    setDraggingId(shape.id);
+  }
+
+  function onPointMouseDown(
+    e: React.MouseEvent<SVGCircleElement>,
+    shape: PathShape,
+    point: PathPoint
+  ) {
+    e.stopPropagation();
+    setPointMenu(null);
+    const { x, y } = getRelativePoint(e);
+    setSelectedId(shape.id);
+    setSelectedPoint(point);
+    setHistory((prev) => [...prev, snapshot(shapes)]);
+    setFuture([]);
+    dragOffset.current = { x: x - point.x, y: y - point.y };
+    setDraggingPoint(point);
+  }
+
+  const commandOptions = ["M", "L", "V", "H", "C", "S", "Q", "T", "A", "Z"];
+
+  function handleInsert(code: string) {
+    if (!selectedPoint || selectedId === null) return;
+    setShapes((prev) =>
+      prev.map((s) => {
+        if (s.id !== selectedId || s.type !== "path") return s;
+        const cmds = s.commands.map((c) => ({ ...c, values: [...c.values] }));
+        const newCmd: PathCommand = { code, values: [selectedPoint.x, selectedPoint.y] };
+        cmds.splice(selectedPoint.cmdIndex + 1, 0, newCmd);
+        return { ...s, commands: cmds, d: commandsToString(cmds) };
+      })
+    );
+    setPointMenu(null);
+  }
+
+  function handleConvert(code: string) {
+    if (!selectedPoint || selectedId === null) return;
+    setShapes((prev) =>
+      prev.map((s) => {
+        if (s.id !== selectedId || s.type !== "path") return s;
+        const cmds = s.commands.map((c) => ({ ...c, values: [...c.values] }));
+        const cmd = cmds[selectedPoint.cmdIndex];
+        cmd.code = code;
+        const upper = code.toUpperCase();
+        if (upper === "H") cmd.values = [selectedPoint.x];
+        else if (upper === "V") cmd.values = [selectedPoint.y];
+        else if (upper === "Z") cmd.values = [];
+        else cmd.values = [selectedPoint.x, selectedPoint.y];
+        return { ...s, commands: cmds, d: commandsToString(cmds) };
+      })
+    );
+    setPointMenu(null);
+  }
+
+  function handleSetRelative() {
+    if (!selectedPoint || selectedId === null) return;
+    setShapes((prev) =>
+      prev.map((s) => {
+        if (s.id !== selectedId || s.type !== "path") return s;
+        const cmds = s.commands.map((c) => ({ ...c, values: [...c.values] }));
+        const cmd = cmds[selectedPoint.cmdIndex];
+        cmd.code =
+          cmd.code === cmd.code.toUpperCase()
+            ? cmd.code.toLowerCase()
+            : cmd.code.toUpperCase();
+        return { ...s, commands: cmds, d: commandsToString(cmds) };
+      })
+    );
+    setPointMenu(null);
+  }
+
+  function handleDeletePoint() {
+    if (!selectedPoint || selectedId === null) return;
+    setShapes((prev) =>
+      prev.map((s) => {
+        if (s.id !== selectedId || s.type !== "path") return s;
+        const cmds = s.commands.map((c) => ({ ...c, values: [...c.values] }));
+        cmds.splice(selectedPoint.cmdIndex, 1);
+        return { ...s, commands: cmds, d: commandsToString(cmds) };
+      })
+    );
+    setSelectedPoint(null);
+    setPointMenu(null);
   }
 
   function onMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    if (draggingPoint) {
+      const { x, y } = getRelativePoint(e);
+      const nx = x - dragOffset.current!.x;
+      const ny = y - dragOffset.current!.y;
+      setShapes((prev) =>
+        prev.map((s) => {
+          if (s.id !== selectedId || s.type !== "path") return s;
+          const cmds = s.commands.map((c) => ({ ...c, values: [...c.values] }));
+          movePathPoint(cmds, draggingPoint, nx, ny);
+          return { ...s, commands: cmds, d: commandsToString(cmds) };
+        })
+      );
+      const updated = { ...draggingPoint, x: nx, y: ny };
+      setDraggingPoint(updated);
+      setSelectedPoint(updated);
+      return;
+    }
     if (draggingId !== null) {
       const { x, y } = getRelativePoint(e);
       setShapes((prev) =>
@@ -201,6 +496,7 @@ export function SvgEditor() {
     }
     setDrawing(null);
     setDraggingId(null);
+    setDraggingPoint(null);
     dragOffset.current = null;
   }
 
@@ -360,7 +656,7 @@ export function SvgEditor() {
                   className="cursor-move"
                   onMouseDown={(e) => onShapeMouseDown(e, shape)}
                 />
-              ) : (
+              ) : shape.type === "circle" ? (
                 <circle
                   key={shape.id}
                   cx={shape.cx}
@@ -372,9 +668,76 @@ export function SvgEditor() {
                   className="cursor-move"
                   onMouseDown={(e) => onShapeMouseDown(e, shape)}
                 />
+              ) : (
+                <g key={shape.id}>
+                  <path
+                    d={shape.d}
+                    fill={shape.fill}
+                    stroke={shape.stroke}
+                    fillOpacity={0.3}
+                    className="cursor-pointer"
+                    onMouseDown={(e) => onShapeMouseDown(e, shape)}
+                  />
+                  {getPathPoints(shape.commands).map((pt, i) => (
+                    <circle
+                      key={i}
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={4}
+                      fill="white"
+                      stroke="black"
+                      className="cursor-move"
+                      onMouseDown={(e) => onPointMouseDown(e, shape, pt)}
+                    />
+                  ))}
+                </g>
               )
             ))}
           </svg>
+
+          {pointMenu && (
+            <div
+              className="absolute bg-white border rounded shadow p-2 text-xs"
+              style={{ left: pointMenu.x, top: pointMenu.y }}
+            >
+              <div>Insert</div>
+              <div className="flex flex-wrap gap-1 mb-1">
+                {commandOptions.map((c) => (
+                  <button
+                    key={c}
+                    className="px-1 border rounded hover:bg-gray-100"
+                    onClick={() => handleInsert(c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <div>Convert To</div>
+              <div className="flex flex-wrap gap-1 mb-1">
+                {commandOptions.map((c) => (
+                  <button
+                    key={c}
+                    className="px-1 border rounded hover:bg-gray-100"
+                    onClick={() => handleConvert(c)}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="block w-full text-left hover:bg-gray-100 rounded px-1"
+                onClick={handleSetRelative}
+              >
+                Set Relative
+              </button>
+              <button
+                className="block w-full text-left hover:bg-gray-100 rounded px-1"
+                onClick={handleDeletePoint}
+              >
+                Delete
+              </button>
+            </div>
+          )}
 
           {shapes.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center text-gray-500 dark:text-gray-400 pointer-events-none">
