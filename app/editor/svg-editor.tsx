@@ -56,6 +56,21 @@ function commandsToString(commands: PathCommand[]): string {
   return commands.map((c) => `${c.code}${c.values.join(" ")}`).join(" ");
 }
 
+function pointsToPath(points: string, close = false): string {
+  const coords = points
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number)
+    .filter((n) => !isNaN(n));
+  if (coords.length < 2) return "";
+  let d = `M ${coords[0]} ${coords[1]}`;
+  for (let i = 2; i < coords.length; i += 2) {
+    d += ` L ${coords[i]} ${coords[i + 1]}`;
+  }
+  if (close) d += " Z";
+  return d;
+}
+
 type PathPoint = {
   x: number;
   y: number;
@@ -260,6 +275,62 @@ export function SvgEditor() {
           cx: parseFloat(el.getAttribute("cx") || "0"),
           cy: parseFloat(el.getAttribute("cy") || "0"),
           r: parseFloat(el.getAttribute("r") || "0"),
+          fill: el.getAttribute("fill") || "transparent",
+          stroke: el.getAttribute("stroke") || "black",
+        });
+      });
+      doc.querySelectorAll("line").forEach((el) => {
+        const x1 = parseFloat(el.getAttribute("x1") || "0");
+        const y1 = parseFloat(el.getAttribute("y1") || "0");
+        const x2 = parseFloat(el.getAttribute("x2") || "0");
+        const y2 = parseFloat(el.getAttribute("y2") || "0");
+        const d = `M ${x1} ${y1} L ${x2} ${y2}`;
+        loaded.push({
+          id: id++,
+          type: "path",
+          d,
+          commands: parsePath(d),
+          fill: "transparent",
+          stroke: el.getAttribute("stroke") || "black",
+        });
+      });
+      doc.querySelectorAll("polyline").forEach((el) => {
+        const d = pointsToPath(el.getAttribute("points") || "");
+        if (d) {
+          loaded.push({
+            id: id++,
+            type: "path",
+            d,
+            commands: parsePath(d),
+            fill: "transparent",
+            stroke: el.getAttribute("stroke") || "black",
+          });
+        }
+      });
+      doc.querySelectorAll("polygon").forEach((el) => {
+        const d = pointsToPath(el.getAttribute("points") || "", true);
+        if (d) {
+          loaded.push({
+            id: id++,
+            type: "path",
+            d,
+            commands: parsePath(d),
+            fill: el.getAttribute("fill") || "transparent",
+            stroke: el.getAttribute("stroke") || "black",
+          });
+        }
+      });
+      doc.querySelectorAll("ellipse").forEach((el) => {
+        const cx = parseFloat(el.getAttribute("cx") || "0");
+        const cy = parseFloat(el.getAttribute("cy") || "0");
+        const rx = parseFloat(el.getAttribute("rx") || "0");
+        const ry = parseFloat(el.getAttribute("ry") || "0");
+        const d = `M ${cx - rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx - rx} ${cy} Z`;
+        loaded.push({
+          id: id++,
+          type: "path",
+          d,
+          commands: parsePath(d),
           fill: el.getAttribute("fill") || "transparent",
           stroke: el.getAttribute("stroke") || "black",
         });
