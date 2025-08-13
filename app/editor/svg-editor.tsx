@@ -195,6 +195,9 @@ export function SvgEditor() {
   const [selectedPoint, setSelectedPoint] = useState<PathPoint | null>(null);
   const [draggingPoint, setDraggingPoint] = useState<PathPoint | null>(null);
   const [pointMenu, setPointMenu] = useState<{ x: number; y: number } | null>(null);
+  const [svgViewBox, setSvgViewBox] = useState<
+    [number, number, number, number] | null
+  >(null);
   const dragOffset = useRef<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -276,9 +279,15 @@ export function SvgEditor() {
       const svgElement = doc.querySelector("svg");
       const target = svgRef.current;
       if (svgElement && target) {
-        const viewBox = svgElement.getAttribute("viewBox");
-        if (viewBox) {
-          target.setAttribute("viewBox", viewBox);
+        const viewBoxAttr = svgElement.getAttribute("viewBox");
+        if (viewBoxAttr) {
+          target.setAttribute("viewBox", viewBoxAttr);
+          const parts = viewBoxAttr.split(/[\s,]+/).map(Number);
+          if (parts.length === 4 && parts.every((n) => !isNaN(n))) {
+            setSvgViewBox(parts as [number, number, number, number]);
+          } else {
+            setSvgViewBox(null);
+          }
         } else {
           const widthAttr = svgElement.getAttribute("width");
           const heightAttr = svgElement.getAttribute("height");
@@ -287,7 +296,10 @@ export function SvgEditor() {
             const h = parseFloat(heightAttr);
             if (!isNaN(w) && !isNaN(h)) {
               target.setAttribute("viewBox", `0 0 ${w} ${h}`);
+              setSvgViewBox([0, 0, w, h]);
             }
+          } else {
+            setSvgViewBox(null);
           }
         }
         target.setAttribute("preserveAspectRatio", "xMidYMid meet");
@@ -534,6 +546,7 @@ export function SvgEditor() {
       svg.removeAttribute("viewBox");
       svg.removeAttribute("preserveAspectRatio");
     }
+    setSvgViewBox(null);
   }
 
   function undo() {
@@ -669,7 +682,13 @@ export function SvgEditor() {
                 <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#d1d5db" strokeWidth="1" />
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
+            <rect
+              x={svgViewBox ? svgViewBox[0] : 0}
+              y={svgViewBox ? svgViewBox[1] : 0}
+              width={svgViewBox ? svgViewBox[2] : "100%"}
+              height={svgViewBox ? svgViewBox[3] : "100%"}
+              fill="url(#grid)"
+            />
             {shapes.map((shape) => (
               shape.type === "rect" ? (
                 <rect
