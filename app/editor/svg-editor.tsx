@@ -300,8 +300,12 @@ export function SvgEditor() {
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (file && file.type === "image/svg+xml") {
-      handleFile(file);
+    if (file) {
+      const isSvg =
+        file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg");
+      if (isSvg) {
+        handleFile(file);
+      }
     }
   }
 
