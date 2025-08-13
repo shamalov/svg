@@ -348,31 +348,51 @@ export function SvgEditor() {
         });
       });
       idRef.current = id;
-      const svgElement = doc.querySelector("svg");
-      if (svgElement) {
-        const viewBoxAttr = svgElement.getAttribute("viewBox");
-        if (viewBoxAttr) {
-          const parts = viewBoxAttr.split(/[\s,]+/).map(Number);
-          if (parts.length === 4 && parts.every((n) => !isNaN(n))) {
-            setSvgViewBox(parts as [number, number, number, number]);
-          } else {
-            setSvgViewBox(DEFAULT_VIEWBOX);
-          }
-        } else {
-          const widthAttr = svgElement.getAttribute("width");
-          const heightAttr = svgElement.getAttribute("height");
-          if (widthAttr && heightAttr) {
-            const w = parseFloat(widthAttr);
-            const h = parseFloat(heightAttr);
-            if (!isNaN(w) && !isNaN(h)) {
-              setSvgViewBox([0, 0, w, h]);
-            } else {
-              setSvgViewBox(DEFAULT_VIEWBOX);
-            }
-          } else {
-            setSvgViewBox(DEFAULT_VIEWBOX);
+      // Determine the bounds of the loaded shapes so the viewBox can
+      // encompass the entire graphic. Relying solely on width/height
+      // attributes from the uploaded SVG caused the editor to zoom to a
+      // blank area when those dimensions didn't match the actual element
+      // coordinates. Calculating bounds ensures the SVG is visible on load.
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      for (const shape of loaded) {
+        if (shape.type === "rect") {
+          const x1 = Math.min(shape.x, shape.x + shape.width);
+          const y1 = Math.min(shape.y, shape.y + shape.height);
+          const x2 = Math.max(shape.x, shape.x + shape.width);
+          const y2 = Math.max(shape.y, shape.y + shape.height);
+          minX = Math.min(minX, x1);
+          minY = Math.min(minY, y1);
+          maxX = Math.max(maxX, x2);
+          maxY = Math.max(maxY, y2);
+        } else if (shape.type === "circle") {
+          minX = Math.min(minX, shape.cx - shape.r);
+          minY = Math.min(minY, shape.cy - shape.r);
+          maxX = Math.max(maxX, shape.cx + shape.r);
+          maxY = Math.max(maxY, shape.cy + shape.r);
+        } else if (shape.type === "path") {
+          try {
+            const path = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "path"
+            );
+            path.setAttribute("d", shape.d);
+            const box = path.getBBox();
+            minX = Math.min(minX, box.x);
+            minY = Math.min(minY, box.y);
+            maxX = Math.max(maxX, box.x + box.width);
+            maxY = Math.max(maxY, box.y + box.height);
+          } catch {
+            // If getBBox fails, ignore this path for bounds calculation.
           }
         }
+      }
+      if (isFinite(minX) && isFinite(minY) && isFinite(maxX) && isFinite(maxY)) {
+        setSvgViewBox([minX, minY, maxX - minX, maxY - minY]);
+      } else {
+        setSvgViewBox(DEFAULT_VIEWBOX);
       }
       setShapes(loaded);
     };
