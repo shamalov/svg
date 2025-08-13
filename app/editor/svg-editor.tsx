@@ -303,6 +303,31 @@ export function SvgEditor() {
       </div>
 
       <div className="flex flex-1">
+        <div className="w-64 p-4 bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-gray-100 overflow-y-auto">
+          <h2 className="text-md font-semibold mb-2">Layers</h2>
+          <ul className="text-sm">
+            <li>
+              <span className="font-medium">Svg</span>
+              <ul className="pl-4">
+                {shapes.map((shape) => (
+                  <li
+                    key={shape.id}
+                    className={`cursor-pointer ${
+                      shape.id === selectedId ? "text-blue-600 font-semibold" : ""
+                    }`}
+                    onClick={() => setSelectedId(shape.id)}
+                  >
+                    {shape.type === "rect"
+                      ? "Rect"
+                      : shape.type === "circle"
+                      ? "Circle"
+                      : shape.type.charAt(0).toUpperCase() + shape.type.slice(1)}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          </ul>
+        </div>
         <div className="flex-1 relative">
           <svg
             ref={svgRef}
