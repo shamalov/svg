@@ -273,6 +273,25 @@ export function SvgEditor() {
         });
       });
       idRef.current = id;
+      const svgElement = doc.querySelector("svg");
+      const target = svgRef.current;
+      if (svgElement && target) {
+        const viewBox = svgElement.getAttribute("viewBox");
+        if (viewBox) {
+          target.setAttribute("viewBox", viewBox);
+        } else {
+          const widthAttr = svgElement.getAttribute("width");
+          const heightAttr = svgElement.getAttribute("height");
+          if (widthAttr && heightAttr) {
+            const w = parseFloat(widthAttr);
+            const h = parseFloat(heightAttr);
+            if (!isNaN(w) && !isNaN(h)) {
+              target.setAttribute("viewBox", `0 0 ${w} ${h}`);
+            }
+          }
+        }
+        target.setAttribute("preserveAspectRatio", "xMidYMid meet");
+      }
       setShapes(loaded);
     };
     reader.readAsText(file);
@@ -506,6 +525,11 @@ export function SvgEditor() {
       setFuture([]);
     }
     setShapes([]);
+    const svg = svgRef.current;
+    if (svg) {
+      svg.removeAttribute("viewBox");
+      svg.removeAttribute("preserveAspectRatio");
+    }
   }
 
   function undo() {
