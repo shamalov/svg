@@ -1,4 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 
 type RectShape = {
   id: number;
@@ -672,90 +681,86 @@ export function SvgEditor() {
     URL.revokeObjectURL(url);
   }
 
-  return (
-    <div
-      className="fixed inset-0 flex flex-col"
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-    >
-      <div className="p-4 bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-gray-100 flex items-center gap-2 flex-wrap z-10">
-        <h1 className="text-lg font-semibold">SVG Editor</h1>
-        <label className="flex items-center text-sm gap-1">
-          <span>Shape</span>
-          <select
-            className="border rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600"
-            value={shapeType}
-            onChange={(e) => setShapeType(e.target.value as "rect" | "circle")}
-          >
-            <option value="rect">Rectangle</option>
-            <option value="circle">Circle</option>
-          </select>
-        </label>
-        <label className="flex items-center text-sm gap-1">
-          <span>Color</span>
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            className="h-8 w-8 p-0 border rounded bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-          />
-        </label>
-        <button
-          className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700"
-          onClick={undo}
-          disabled={history.length === 0}
-        >
-          Undo
-        </button>
-        <button
-          className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700"
-          onClick={redo}
-          disabled={future.length === 0}
-        >
-          Redo
-        </button>
-        <button
-          className="px-3 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
-          onClick={clear}
-        >
-          Clear
-        </button>
-        <button
-          className="px-3 py-1 rounded bg-green-500 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
-          onClick={download}
-        >
-          Download
-        </button>
-        <p className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Drag on the canvas to draw.</p>
-      </div>
+    return (
+      <div
+        className="fixed inset-0 flex flex-col"
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+      >
+        <Card className="rounded-none border-b bg-white/90 dark:bg-gray-800/90 z-10">
+          <CardContent className="flex items-center gap-2 flex-wrap p-4">
+            <h1 className="text-lg font-semibold">SVG Editor</h1>
+            <div className="flex items-center gap-1 text-sm">
+              <Label htmlFor="shape">Shape</Label>
+              <select
+                id="shape"
+                className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                value={shapeType}
+                onChange={(e) => setShapeType(e.target.value as "rect" | "circle")}
+              >
+                <option value="rect">Rectangle</option>
+                <option value="circle">Circle</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1 text-sm">
+              <Label htmlFor="color">Color</Label>
+              <Input
+                id="color"
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="h-9 w-9 p-1"
+              />
+            </div>
+            <Button onClick={undo} disabled={history.length === 0}>
+              Undo
+            </Button>
+            <Button onClick={redo} disabled={future.length === 0}>
+              Redo
+            </Button>
+            <Button variant="secondary" onClick={clear}>
+              Clear
+            </Button>
+            <Button variant="outline" onClick={download}>
+              Download
+            </Button>
+            <p className="text-xs text-gray-500 dark:text-gray-400 ml-auto">
+              Drag on the canvas to draw.
+            </p>
+          </CardContent>
+        </Card>
 
-      <div className="flex flex-1">
-        <div className="w-64 p-4 bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-gray-100 overflow-y-auto">
-          <h2 className="text-md font-semibold mb-2">Layers</h2>
-          <ul className="text-sm">
-            <li>
-              <span className="font-medium">Svg</span>
-              <ul className="pl-4">
-                {shapes.map((shape) => (
-                  <li
-                    key={shape.id}
-                    className={`cursor-pointer ${
-                      shape.id === selectedId ? "text-blue-600 font-semibold" : ""
-                    }`}
-                    onClick={() => setSelectedId(shape.id)}
-                  >
-                    {shape.type === "rect"
-                      ? "Rect"
-                      : shape.type === "circle"
-                      ? "Circle"
-                      : shape.type.charAt(0).toUpperCase() + shape.type.slice(1)}
-                  </li>
-                ))}
+        <div className="flex flex-1">
+          <Card className="w-64 m-4 overflow-y-auto">
+            <CardHeader>
+              <CardTitle className="text-md">Layers</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ul className="text-sm">
+                <li>
+                  <span className="font-medium">Svg</span>
+                  <ul className="pl-4">
+                    {shapes.map((shape) => (
+                      <li
+                        key={shape.id}
+                        className={`cursor-pointer ${
+                          shape.id === selectedId ? "text-blue-600 font-semibold" : ""
+                        }`}
+                        onClick={() => setSelectedId(shape.id)}
+                      >
+                        {shape.type === "rect"
+                          ? "Rect"
+                          : shape.type === "circle"
+                          ? "Circle"
+                          : shape.type.charAt(0).toUpperCase() + shape.type.slice(1)}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
               </ul>
-            </li>
-          </ul>
-        </div>
-        <div className="flex-1 relative">
+            </CardContent>
+          </Card>
+          <div className="flex-1 relative">
           <svg
             ref={svgRef}
             className="block w-full h-full bg-white dark:bg-gray-900"
@@ -882,15 +887,15 @@ export function SvgEditor() {
             <div className="absolute inset-0 flex items-center justify-center text-gray-500 dark:text-gray-400 pointer-events-none">
               <div className="text-center">
                 <p className="mb-2">Drag & drop an SVG file here or</p>
-                <button
-                  className="px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 pointer-events-auto"
+                <Button
                   onClick={() => fileInputRef.current?.click()}
+                  className="pointer-events-auto"
                 >
                   Upload
-                </button>
+                </Button>
               </div>
-            </div>
-          )}
+              </div>
+            )}
 
           <input
             ref={fileInputRef}
@@ -904,53 +909,56 @@ export function SvgEditor() {
           />
         </div>
 
-        {selectedShape && (
-          <div className="w-64 p-4 bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-gray-100 flex flex-col gap-2 z-10">
-            <h2 className="text-md font-semibold">Shape Tools</h2>
-            <label className="flex flex-col text-sm gap-1">
-              <span>Fill</span>
-              <input
-                type="color"
-                value={selectedShape.fill.startsWith("#") ? selectedShape.fill : "#000000"}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setHistory((prev) => [...prev, snapshot(shapes)]);
-                  setFuture([]);
-                  setShapes((prev) =>
-                    prev.map((s) =>
-                      s.id === selectedShape.id ? { ...s, fill: value } : s
-                    )
-                  );
-                }}
-                className="h-8 w-full p-0 border rounded bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-              />
-            </label>
-            <label className="flex flex-col text-sm gap-1">
-              <span>Stroke</span>
-              <input
-                type="color"
-                value={selectedShape.stroke.startsWith("#") ? selectedShape.stroke : "#000000"}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setHistory((prev) => [...prev, snapshot(shapes)]);
-                  setFuture([]);
-                  setShapes((prev) =>
-                    prev.map((s) =>
-                      s.id === selectedShape.id ? { ...s, stroke: value } : s
-                    )
-                  );
-                }}
-                className="h-8 w-full p-0 border rounded bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
-              />
-            </label>
-            <button
-              className="px-2 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
-              onClick={() => setSelectedId(null)}
-            >
-              Close
-            </button>
-          </div>
-        )}
+          {selectedShape && (
+            <Card className="w-64 m-4 flex flex-col gap-2 z-10">
+              <CardHeader>
+                <CardTitle className="text-md">Shape Tools</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-2 pt-0">
+                <div className="flex flex-col text-sm gap-1">
+                  <Label htmlFor="fill">Fill</Label>
+                  <Input
+                    id="fill"
+                    type="color"
+                    value={selectedShape.fill.startsWith("#") ? selectedShape.fill : "#000000"}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setHistory((prev) => [...prev, snapshot(shapes)]);
+                      setFuture([]);
+                      setShapes((prev) =>
+                        prev.map((s) =>
+                          s.id === selectedShape.id ? { ...s, fill: value } : s
+                        )
+                      );
+                    }}
+                    className="h-8 w-full p-1"
+                  />
+                </div>
+                <div className="flex flex-col text-sm gap-1">
+                  <Label htmlFor="stroke">Stroke</Label>
+                  <Input
+                    id="stroke"
+                    type="color"
+                    value={selectedShape.stroke.startsWith("#") ? selectedShape.stroke : "#000000"}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setHistory((prev) => [...prev, snapshot(shapes)]);
+                      setFuture([]);
+                      setShapes((prev) =>
+                        prev.map((s) =>
+                          s.id === selectedShape.id ? { ...s, stroke: value } : s
+                        )
+                      );
+                    }}
+                    className="h-8 w-full p-1"
+                  />
+                </div>
+                <Button variant="secondary" onClick={() => setSelectedId(null)}>
+                  Close
+                </Button>
+              </CardContent>
+            </Card>
+          )}
       </div>
     </div>
   );
